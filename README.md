@@ -18,6 +18,7 @@ git clone https://github.com/y37y/wezterm-macos.git ~/.config/wezterm
 
 # Initialize session manager submodule
 git submodule update --init --recursive
+```
 
 ## Features
 
@@ -86,4 +87,3 @@ git submodule update --init --recursive
 - Native clipboard support
 - Window blur effects (disabled by default)
 - Click URLs with CTRL+Click
-```
