@@ -1,11 +1,12 @@
 -- vim: tabstop=2 shiftwidth=2 expandtab
+-- macOS-optimized WezTerm configuration
 
 local wezterm = require("wezterm")
 local act = wezterm.action
 local config = wezterm.config_builder()
-local appearance = require("appearance")
-local projects = require("projects")
-local session_manager = require("wezterm-session-manager/session-manager")
+
+-- Safe module loading (fixes dependency issues)
+local session_manager_ok, session_manager = pcall(require, "wezterm-session-manager/session-manager")
 
 config.color_scheme = "Tokyo Night"
 
@@ -18,11 +19,11 @@ config.front_end = "WebGpu"
 config.webgpu_power_preference = "HighPerformance"
 config.term = "xterm-256color"
 
-config.font = wezterm.font("JetBrainsMonoNL Nerd Font Mono", { weight = "Regular" })
+config.font = wezterm.font("JetBrainsMono Nerd Font Mono", { weight = "Regular" })
 config.font_rules = {
   {
     italic = true,
-    font = wezterm.font("JetBrainsMonoNL Nerd Font Mono", { weight = "Bold", italic = true }),
+    font = wezterm.font("JetBrainsMono Nerd Font Mono", { weight = "Bold", italic = true }),
   },
 }
 config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" }
@@ -37,18 +38,6 @@ config.command_palette_font_size = 14
 config.command_palette_bg_color = "#1a1b26"  -- Darker Tokyo Night background
 config.command_palette_fg_color = "#c0caf5"  -- Tokyo Night foreground
 
--- Make it look like tabs, with better GUI controls - buggy
--- wezterm.config.use_fancy_tab_bar = true
-
---[[
--- workspace server
-konfig.unix_domains = {
-	{
-		name = "unix",
-	},
-}
-]]
-
 config.window_close_confirmation = "NeverPrompt"
 config.window_background_opacity = 1.0
 config.macos_window_background_blur = 0
@@ -57,16 +46,18 @@ config.window_frame = {
 	font_size = 14,
 }
 
--- wezterm session manager
-wezterm.on("save_session", function(window)
-	session_manager.save_state(window)
-end)
-wezterm.on("load_session", function(window)
-	session_manager.load_state(window)
-end)
-wezterm.on("restore_session", function(window)
-	session_manager.restore_state(window)
-end)
+-- Session manager events (only if module exists)
+if session_manager_ok then
+	wezterm.on("save_session", function(window)
+		session_manager.save_state(window)
+	end)
+	wezterm.on("load_session", function(window)
+		session_manager.load_state(window)
+	end)
+	wezterm.on("restore_session", function(window)
+		session_manager.restore_state(window)
+	end)
+end
 
 local function move_pane(key, direction)
 	return {
@@ -83,60 +74,46 @@ local function resize_pane(key, direction)
 	}
 end
 
+-- Leader key (CMD+e for macOS)
 config.leader = { key = "e", mods = "SUPER", timeout_milliseconds = 2000 }
 
--- Table mapping keypresses to actions
-config.keys = {
-	-- wezterm session manager
-	{ key = "S", mods = "LEADER", action = wezterm.action({ EmitEvent = "save_session" }) },
-	{ key = "L", mods = "LEADER", action = wezterm.action({ EmitEvent = "load_session" }) },
-	{ key = "R", mods = "LEADER", action = wezterm.action({ EmitEvent = "restore_session" }) },
-
-	-- wezterm workspace little different from project buggy maybe bc of top right status bar
-	--[[
-	-- Attach to muxer
-	{
-		key = "a",
-		mods = "LEADER",
-		action = act.AttachDomain("unix"),
-	},
-
-	-- Detach from muxer
-	{
-		key = "s",
-		mods = "LEADER",
-		action = act.DetachDomain({ DomainName = "unix" }),
-	},
-  ]]
-
-	-- Sends ESC + b and ESC + f sequence, which is used
-	-- for telling your shell to jump back/forward.
+-- Key bindings optimized for macOS
+local keys = {
+	-- Word navigation (CMD key for macOS)
 	{
 		key = "LeftArrow",
-		mods = "SUPER", -- Command (SUPER) key for macOS
+		mods = "SUPER", -- Command key for macOS
 		action = wezterm.action.SendString("\x1bb"), -- Move back by word
 	},
 	{
 		key = "RightArrow",
-		mods = "SUPER", -- Command (SUPER) key for macOS
+		mods = "SUPER", -- Command key for macOS
 		action = wezterm.action.SendString("\x1bf"), -- Move forward by word
 	},
 
-	-- zoom in and out pane
+	-- Pane management (ALT for secondary actions)
 	{
 		key = "f",
 		mods = "ALT",
 		action = wezterm.action.TogglePaneZoomState,
 	},
+	{
+		key = "v",
+		mods = "ALT",
+		action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }),
+	},
+	{
+		key = "s",
+		mods = "ALT",
+		action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }),
+	},
 
-	-- create a new tab
+	-- Tab management
 	{
 		key = "t",
 		mods = "ALT",
 		action = act.SpawnTab("CurrentPaneDomain"),
 	},
-
-	-- rename a tab
 	{
 		key = "n",
 		mods = "ALT",
@@ -149,97 +126,87 @@ config.keys = {
 			end),
 		}),
 	},
-
-	-- show tab navigator
 	{
 		key = "w",
 		mods = "LEADER",
 		action = act.ShowTabNavigator,
 	},
 
-	-- close a tab also ctrl + d works in termianl
+	-- Close actions (CMD for primary actions on macOS)
 	{
 		key = "x",
 		mods = "SUPER",
 		action = act.CloseCurrentTab({ confirm = true }),
 	},
-
-	-- close current pane
 	{
 		key = "d",
 		mods = "SUPER",
 		action = wezterm.action.CloseCurrentPane({ confirm = true }),
 	},
 
-	-- move between tabs
+	-- Tab navigation
 	{ key = "h", mods = "ALT", action = act.ActivateTabRelative(-1) },
 	{ key = "l", mods = "ALT", action = act.ActivateTabRelative(1) },
 
-	-- Tab selection default is already SUPER + num (macos is command + num)
-	{ key = "1", mods = "LEADER", action = act.ActivateTab(0) },
-	{ key = "2", mods = "LEADER", action = act.ActivateTab(1) },
-	{ key = "3", mods = "LEADER", action = act.ActivateTab(2) },
-	{ key = "4", mods = "LEADER", action = act.ActivateTab(3) },
-	{ key = "5", mods = "LEADER", action = act.ActivateTab(4) },
-	{ key = "6", mods = "LEADER", action = act.ActivateTab(5) },
-	{ key = "7", mods = "LEADER", action = act.ActivateTab(6) },
-	{ key = "8", mods = "LEADER", action = act.ActivateTab(7) },
-	{ key = "9", mods = "LEADER", action = act.ActivateTab(8) },
-	{ key = "0", mods = "LEADER", action = act.ActivateTab(-1) }, -- Last tab
+	-- Tab selection (direct CMD shortcuts - native macOS style)
+	{ key = "1", mods = "SUPER", action = act.ActivateTab(0) },
+	{ key = "2", mods = "SUPER", action = act.ActivateTab(1) },
+	{ key = "3", mods = "SUPER", action = act.ActivateTab(2) },
+	{ key = "4", mods = "SUPER", action = act.ActivateTab(3) },
+	{ key = "5", mods = "SUPER", action = act.ActivateTab(4) },
+	{ key = "6", mods = "SUPER", action = act.ActivateTab(5) },
+	{ key = "7", mods = "SUPER", action = act.ActivateTab(6) },
+	{ key = "8", mods = "SUPER", action = act.ActivateTab(7) },
+	{ key = "9", mods = "SUPER", action = act.ActivateTab(8) },
+	{ key = "0", mods = "SUPER", action = act.ActivateTab(-1) }, -- Last tab
 
+	-- Pane navigation with leader key (vim-style)
+	move_pane("j", "Down"),
+	move_pane("k", "Up"),
+	move_pane("h", "Left"),
+	move_pane("l", "Right"),
+
+	-- Resize mode
 	{
-		key = "v",
-		mods = "ALT",
-		action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }),
+		key = "r",
+		mods = "LEADER",
+		action = wezterm.action.ActivateKeyTable({
+			name = "resize_panes",
+			one_shot = false,
+			timeout_milliseconds = 2000,
+		}),
 	},
-	{
-		key = "s",
-		mods = "ALT",
-		action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }),
-	},
+
+	-- Send Ctrl+A (useful for tmux/screen)
 	{
 		key = "a",
 		mods = "LEADER|CTRL",
 		action = wezterm.action.SendKey({ key = "a", mods = "CTRL" }),
 	},
 
-	move_pane("j", "Down"),
-	move_pane("k", "Up"),
-	move_pane("h", "Left"),
-	move_pane("l", "Right"),
+	-- macOS-specific tmux integration
+	{
+		key = 's',
+		mods = 'CMD',
+		action = wezterm.action.SendString('\x1bs'),  -- Alt+s for tmux on macOS
+	},
 
-	{
-		-- When we push LEADER + R...
-		key = "r",
-		mods = "LEADER",
-		-- Activate the `resize_panes` keytable
-		action = wezterm.action.ActivateKeyTable({
-			name = "resize_panes",
-			-- Ensures the keytable stays active after it handles its
-			-- first keypress.
-			one_shot = false,
-			-- Deactivate the keytable after a timeout.
-			timeout_milliseconds = 2000,
-		}),
-	},
-	{
-    key = 's',
-    mods = 'CMD',
-    action = wezterm.action.SendString('\x1bs'),  -- Alt+s for tmux on MacOS
-  },
-	{
-		key = "p",
-		mods = "LEADER",
-		-- Present in to our project picker
-		action = projects.choose_project(),
-	},
+	-- Workspace management
 	{
 		key = "f",
 		mods = "LEADER",
-		-- Present a list of existing workspaces
 		action = wezterm.action.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" }),
 	},
 }
+
+-- Add session manager keys only if module is available
+if session_manager_ok then
+	table.insert(keys, { key = "S", mods = "LEADER", action = wezterm.action({ EmitEvent = "save_session" }) })
+	table.insert(keys, { key = "L", mods = "LEADER", action = wezterm.action({ EmitEvent = "load_session" }) })
+	table.insert(keys, { key = "R", mods = "LEADER", action = wezterm.action({ EmitEvent = "restore_session" }) })
+end
+
+config.keys = keys
 
 config.key_tables = {
 	resize_panes = {
@@ -250,7 +217,7 @@ config.key_tables = {
 	},
 }
 
--- Mouse bindings (from Omerxx's config)
+-- Mouse bindings
 config.mouse_bindings = {
 	{
 		event = { Up = { streak = 1, button = "Left" } },
