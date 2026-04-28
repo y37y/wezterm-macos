@@ -79,16 +79,31 @@ config.leader = { key = "e", mods = "SUPER", timeout_milliseconds = 2000 }
 
 -- Key bindings optimized for macOS
 local keys = {
-	-- Word navigation (CMD key for macOS)
+	-- Line navigation (CMD = home/end, native Mac muscle memory)
+	-- Send Home/End escape codes — universally interpreted by zsh, nvim,
+	-- and tmux passes them through. Avoids prefix M-a collision that
+	-- happened when SendString("\x1bb") was misparsed under tmux.
 	{
 		key = "LeftArrow",
-		mods = "SUPER", -- Command key for macOS
-		action = wezterm.action.SendString("\x1bb"), -- Move back by word
+		mods = "SUPER",
+		action = wezterm.action.SendString("\x1b[H"), -- Cmd+Left = Home
 	},
 	{
 		key = "RightArrow",
-		mods = "SUPER", -- Command key for macOS
-		action = wezterm.action.SendString("\x1bf"), -- Move forward by word
+		mods = "SUPER",
+		action = wezterm.action.SendString("\x1b[F"), -- Cmd+Right = End
+	},
+
+	-- Word navigation (OPT key for macOS)
+	{
+		key = "LeftArrow",
+		mods = "ALT",
+		action = wezterm.action.SendString("\x1bb"), -- Opt+Left = back word
+	},
+	{
+		key = "RightArrow",
+		mods = "ALT",
+		action = wezterm.action.SendString("\x1bf"), -- Opt+Right = forward word
 	},
 
 	-- Pane management (ALT for secondary actions)
